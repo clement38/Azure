@@ -1,0 +1,55 @@
+# Create resource group
+az group create --name rgEventGrid --location westus2
+
+# Create a custom topic (eventgrid endpoint)
+az eventgrid topic create --name topicEventGrid1 -l westus2 -g rgEventGrid
+
+https://topiceventgrid1.westus2-1.eventgrid.azure.net/api/events
+
+# Create an endpoint through requestBin
+https://requestb.in/y30uf8y3
+
+# Subscribe to a topic
+az eventgrid topic event-subscription create --name event001 \
+  --endpoint https://requestb.in/y30uf8y3 \
+  -g rgEventGrid \
+  --topic-name topicEventGrid1
+  
+# Send an event to your topic
+
+endpoint=$(az eventgrid topic show --name topicEventGrid1 -g rgEventGrid --query "endpoint" --output tsv)
+key=$(az eventgrid topic key list --name topicEventGrid1 -g rgEventGrid --query "key1" --output tsv)
+
+echo $endpoint
+echo $key
+
+# Create request
+
+body=$(eval echo "'$(curl https://raw.githubusercontent.com/clement38/Azure/master/customevent1.json)'")
+echo $body
+
+# HTTP Request
+curl -X POST -H "aeg-sas-key: $key" -d "$body" $endpoint
+
+## Check request bin logs
+
+
+az eventgrid topic event-subscription create --name event002 \
+  --endpoint https://requestb.in/124j8mn1 \
+  --included-event-types "recordRemoved"\
+  -g rgEventGrid \
+  --topic-name topicEventGrid1
+
+# Send an event to your topic
+
+endpoint=$(az eventgrid topic show --name topicEventGrid1 -g rgEventGrid --query "endpoint" --output tsv)
+key=$(az eventgrid topic key list --name topicEventGrid1 -g rgEventGrid --query "key1" --output tsv)
+  
+body2=$(eval echo "'$(curl https://raw.githubusercontent.com/clement38/Azure/master/customevent2.json)'")
+
+
+# HTTP Request
+curl -X POST -H "aeg-sas-key: $key" -d "$body2" $endpoint
+
+# Delete resource group rgEventGrid
+az group delete --name rgEventGrid
